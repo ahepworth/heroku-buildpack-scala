@@ -9,8 +9,8 @@ cat <<EOF
 ---
 config_vars:
   PATH: .jdk/bin:.sbt_home/bin:/usr/local/bin:/usr/bin:/bin
-  JAVA_OPTS: -Xmx384m -Xss512k -XX:+UseCompressedOops
-  SBT_OPTS: -Xmx384m -Xss2m -XX:+UseCompressedOops
+  JAVA_OPTS: -Xmx512m -Xss2m -XX:+UseCompressedOops
+  SBT_OPTS: -Xmx512m -Xss2m -XX:+UseCompressedOops
   REPO: /app/.sbt_home/.ivy2/cache
 addons:
   heroku-postgresql:dev
