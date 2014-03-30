@@ -2,8 +2,8 @@
 # bin/compile <build-dir> <cache-dir> <env-dir>
 
 # fail fast
-#set -e
-set -x
+set -e
+#set -x
 
 BP_DIR=$(cd $(dirname $0)/..; pwd) # absolute path
 BIN_DIR=$BP_DIR/bin
@@ -159,6 +159,3 @@ fi
 
 # Move compiled app back to where Heroku expects it
 mv $BUILD_DIR $APP_BUILD_DIR
-
-echo "Hanging around"
-sleep 300
