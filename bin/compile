@@ -143,11 +143,11 @@ done
 if is_play $BUILD_DIR ; then
   if [ -d $SBT_USER_HOME/.ivy2 ]; then
     echo "-----> Dropping ivy cache from the slug"
-    rm -rf $SBT_USER_HOME/.ivy2
+    #rm -rf $SBT_USER_HOME/.ivy2
   fi
   if [ -d $BUILD_DIR/project/boot ] ; then
     echo "-----> Dropping project boot dir from the slug"
-    rm -rf $BUILD_DIR/project/boot
+    #rm -rf $BUILD_DIR/project/boot
   fi
   if [ -d $BUILD_DIR/target ] ; then
     echo "-----> Dropping compilation artifacts from the slug"
