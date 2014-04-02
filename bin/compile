@@ -19,9 +19,11 @@ ENV_DIR=$3
 BUILD_DIR="/tmp/scala_buildpack_build_dir"
 mv $APP_BUILD_DIR $BUILD_DIR
 
+echo -n "-----> Retrieving JVM utils ..."
 curl --silent --location http://heroku-jvm-common.s3.amazonaws.com/jvm-buildpack-common.tar.gz | tar xz
 . bin/util
 . bin/java
+echo "done"
 
 export_env_dir $ENV_DIR
 
@@ -61,34 +63,35 @@ done
 # these are preliminary checks. actual version check happens below when attempting to download sbt boot.properties
 if ! test -e project/build.properties; then
 	echo " !      Error, your scala project must include project/build.properties and define sbt.version"
-	echo " !      You must use a release verison of sbt, sbt.version=0.11.0 or greater"
+	echo " !      You must use a release version of sbt, sbt.version=0.11.0 or greater"
         exit 1
 fi
 
 if ! has_supported_sbt_version ${BUILD_DIR}; then
 	echo " !      Error, you have defined an unsupported sbt.version in project/build.properties"
-	echo " !      You must use a release verison of sbt, sbt.version=0.11.0 or greater"
+	echo " !      You must use a release version of sbt, sbt.version=0.11.0 or greater"
 	exit 1
 fi
  
 SBT_VERSION="$(get_supported_sbt_version ${BUILD_DIR})"
 SBT_JAR="sbt-launch.jar"
 SBT_PROPS="sbt-$SBT_VERSION.boot.properties"
-SBT_URL="http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.0/$SBT_JAR"
-SBT_PROPS_URL="http://s3.amazonaws.com/heroku-jvm-langpack-scala/$SBT_PROPS"
+SBT_URL="http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/$SBT_VERSION/$SBT_JAR"
 ## in 0.10 start-script will depend on package, if packaging
 ## is required - it may not be, we can run .class files or a package-war
 ## instead.
 SBT_TASKS="compile stage"
 
 # To enable clean compiles, configure the environment to clean:
-# $ heroku config:set SBT_CLEAN=true
-# $ git push heroku master
+# $ cf set-env SBT_CLEAN true
+# $ cf push
 # See: https://devcenter.heroku.com/articles/scala-support#clean-builds
 [ "$SBT_CLEAN" = "true" ] && SBT_TASKS="clean $SBT_TASKS"
 
 if [ ! -d .ivy2/cache ]; then
-   mkdir -p .ivy2/cache
+  echo -n "-----> Creating ivy cache directory..."
+  mkdir -p .ivy2/cache
+  echo "done"
 fi
 
 if [ ! -f "$SBT_BINDIR"/"$SBT_JAR" ]; then
@@ -98,12 +101,12 @@ if [ ! -f "$SBT_BINDIR"/"$SBT_JAR" ]; then
   ## clean up any old versions
   /bin/rm -f sbt sbt-launch-*.jar || true
 
-  echo -n "-----> Downloading SBT..."
+  echo -n "-----> Downloading SBT from $SBT_URL ..."
   curl --silent --max-time 60 -O --location $SBT_URL --fail || error "Failed to download $SBT_JAR"
   echo "done"
 
   echo "#!/usr/bin/env bash" > sbt
-  echo "java -Dsbt.boot.properties=/app/.sbt_home/bin/sbt.boot.properties  -Duser.home=/app/.sbt_home -Divy.default.ivy.user.dir=/app/.sbt_home/.ivy2 -jar /app/.sbt_home/bin/$SBT_JAR \"\$@\"" >> sbt
+  echo "java -Dsbt.boot.properties=/app/.sbt_home/bin/sbt.boot.properties -Duser.home=/app/.sbt_home -Divy.default.ivy.user.dir=/app/.sbt_home/.ivy2 -jar /app/.sbt_home/bin/$SBT_JAR \"\$@\"" >> sbt
   chmod a+x sbt
 
   cd $BUILD_DIR
@@ -116,9 +119,9 @@ else
 fi
 
 # copy in heroku sbt plugin
-HEROKU_PLUGIN="HerokuPlugin.scala"
+CF_PLUGIN="CloudFoundryPlugin.scala"
 mkdir -p "$SBT_USER_HOME/.sbt/plugins"
-cp -p $OPT_DIR/$HEROKU_PLUGIN $SBT_USER_HOME/.sbt/plugins/$HEROKU_PLUGIN
+cp -p $OPT_DIR/$CF_PLUGIN $SBT_USER_HOME/.sbt/plugins/$CF_PLUGIN
 
 # build app
 echo "-----> Running: sbt $SBT_TASKS"
@@ -139,23 +142,23 @@ for DIR in $CACHED_DIRS; do
   cache_copy $DIR $BUILD_DIR $CACHE_DIR
 done
 
-# drop useless directories from slug for play only
+# drop useless directories from droplet for play only
 if is_play $BUILD_DIR ; then
   if [ -d $SBT_USER_HOME/.ivy2 ]; then
-    echo "-----> Dropping ivy cache from the slug"
+    echo "-----> Dropping ivy cache from the droplet"
     rm -rf $SBT_USER_HOME/.ivy2
   fi
   if [ -d $BUILD_DIR/project/boot ] ; then
-    echo "-----> Dropping project boot dir from the slug"
+    echo "-----> Dropping project boot dir from the droplet"
     rm -rf $BUILD_DIR/project/boot
   fi
   if [ -d $BUILD_DIR/target ] ; then
-    echo "-----> Dropping compilation artifacts from the slug"
+    echo "-----> Dropping compilation artifacts from the droplet"
     rm -rf $BUILD_DIR/target/scala-*
     rm -rf $BUILD_DIR/target/streams
     rm -rf $BUILD_DIR/target/resolution-cache
   fi
 fi
 
-# Move compiled app back to where Heroku expects it
+# Move compiled app back to where CF expects it
 mv $BUILD_DIR $APP_BUILD_DIR
